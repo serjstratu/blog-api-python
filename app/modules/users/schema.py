@@ -8,6 +8,8 @@ class UserResponse(BaseModel):
     name: str
     username: str
     email: str
+    avatar: str | None
+    bio: str | None
     phone: str | None
     roles: list[str]
     last_login: datetime | None

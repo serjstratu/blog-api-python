@@ -19,6 +19,16 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(255))
 
+    avatar: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
+
+    bio: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
+
     password_hash: Mapped[str] = mapped_column(String(255))
 
     phone: Mapped[str | None] = mapped_column(
