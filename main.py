@@ -1,5 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from app.modules.users.router import router as users_router
 from app.modules.auth.router import router as auth_router
 
@@ -9,6 +13,10 @@ app = FastAPI(
     description="Blog API built with FastAPI",
     version="1.0.0"
 )
+
+UPLOADS_DIR = Path(__file__).resolve().parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 app.include_router(
     users_router,
