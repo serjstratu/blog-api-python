@@ -72,6 +72,24 @@ class PostResponse(BaseModel):
     )
 
 
+class PaginationMetadata(BaseModel):
+    current_page: int
+    per_page: int
+    total_items: int
+    total_pages: int
+    has_next_page: bool
+    has_previous_page: bool
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class PaginatedPostsResponse(BaseModel):
+    data: list[PostResponse]
+    pagination: PaginationMetadata
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
 def make_slug(title: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     return slug or "post"

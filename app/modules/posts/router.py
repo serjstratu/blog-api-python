@@ -6,7 +6,14 @@ from app.db.database import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.posts import service
 from app.modules.posts.model import Post
-from app.modules.posts.schema import PostCreate, PostPatch, PostReplace, PostResponse
+from app.modules.posts.schema import (
+    PaginatedPostsResponse,
+    PaginationMetadata,
+    PostCreate,
+    PostPatch,
+    PostReplace,
+    PostResponse,
+)
 from app.modules.users.model import User
 
 
@@ -20,11 +27,27 @@ def _owned_post(db: Session, post_id: int, user: User) -> Post:
     return post
 
 
-@router.get("", response_model=list[PostResponse])
+@router.get("", response_model=PaginatedPostsResponse)
 def list_posts(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
-    return service.list_posts(db)
+    posts, total_items = service.list_posts(db, limit=limit, offset=offset)
+    current_page = offset // limit + 1
+    total_pages = (total_items + limit - 1) // limit
+
+    return PaginatedPostsResponse(
+        data=posts,
+        pagination=PaginationMetadata(
+            current_page=current_page,
+            per_page=limit,
+            total_items=total_items,
+            total_pages=total_pages,
+            has_next_page=offset + len(posts) < total_items,
+            has_previous_page=offset > 0 and total_items > 0,
+        ),
+    )
 
 
 @router.get("/{post_id}", response_model=PostResponse)

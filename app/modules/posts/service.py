@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.posts.model import Post
@@ -8,13 +8,18 @@ from app.modules.posts.schema import PostCreate, PostPatch, PostReplace, make_sl
 from app.modules.users.model import User
 
 
-def list_posts(db: Session) -> list[Post]:
+def list_posts(db: Session, *, limit: int, offset: int) -> tuple[list[Post], int]:
     query = (
         select(Post)
         .where(Post.status == "published")
         .order_by(Post.published_at.desc(), Post.id.desc())
+        .limit(limit)
+        .offset(offset)
     )
-    return list(db.scalars(query).all())
+    count_query = select(func.count()).select_from(Post).where(Post.status == "published")
+    posts = list(db.scalars(query).all())
+    total_items = db.scalar(count_query) or 0
+    return posts, total_items
 
 
 def get_post(db: Session, post_id: int) -> Post | None:
