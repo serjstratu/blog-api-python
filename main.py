@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.modules.users.router import router as users_router
 from app.modules.auth.router import router as auth_router
 from app.modules.posts.router import router as posts_router
+from app.modules.comments.router import router as comments_router
 
 
 app = FastAPI(
@@ -31,6 +32,11 @@ app.include_router(
 
 app.include_router(
     posts_router,
+    prefix="/api"
+)
+
+app.include_router(
+    comments_router,
     prefix="/api"
 )
 

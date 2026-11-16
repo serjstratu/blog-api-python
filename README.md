@@ -29,9 +29,9 @@ REST API backend for a blog application, built with FastAPI, SQLAlchemy, and Pos
    ACCESS_TOKEN_EXPIRE_MINUTES=60
    ```
 
-3. Make sure the database has a `users` table with `avatar` and `bio` columns. Run the SQL in `app/scripts/create_posts_table.sql` against the same PostgreSQL database, using a client such as pgAdmin or `psql`.
+3. Make sure the database has a `users` table with `avatar` and `bio` columns. Run the SQL in `app/scripts/create_posts_table.sql` and `app/scripts/create_comments_table.sql` against the same PostgreSQL database, using a client such as pgAdmin or `psql`.
 
-   The PostgreSQL role specified in `DATABASE_URL` needs `SELECT`, `INSERT`, `UPDATE`, and `DELETE` privileges on `posts`, plus `USAGE` and `SELECT` privileges on the `posts_id_seq` sequence. The posts table references the existing `users` table.
+   The PostgreSQL role specified in `DATABASE_URL` needs read/write privileges on `posts` and `comments`, plus `USAGE` and `SELECT` privileges on their ID sequences. These tables reference the existing `users` table.
 
 4. Start the API:
 
@@ -108,6 +108,19 @@ Example create-post body. The `slug`, `excerpt`, `image`, `status`, `categoryId`
 Allowed `status` values are `draft`, `published`, and `archived`. If `slug` is omitted, it is generated from the title. New posts default to `draft`; public GET routes return only published posts.
 
 The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`.
+
+### Comments
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/posts/{post_id}/comments?limit=20&offset=0` | Public | List a post's comments and replies in chronological order |
+| GET | `/api/comments?postId={post_id}&limit=20&offset=0` | Public | Alternative comment-list URL |
+| POST | `/api/posts/{post_id}/comments` | Authenticated | Add a comment; optionally pass `parentId` to reply to a top-level comment |
+| POST | `/api/comments/{comment_id}/replies` | Authenticated | Reply to a top-level comment |
+| PATCH | `/api/comments/{comment_id}` | Author | Edit your own comment |
+| DELETE | `/api/comments/{comment_id}` | Author or admin | Soft-delete a comment |
+
+Comment lists return the same `data` and `pagination` shape as the posts list. Only published posts are available for public comment reads and new comments. Replies are limited to one level. Deleted comments are hidden from the response but retained in the database with `deleted_at` set.
 
 ### CORS for the local frontend
 
