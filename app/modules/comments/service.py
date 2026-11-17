@@ -54,11 +54,14 @@ def create_comment(
     content: str,
     parent: Comment | None = None,
 ) -> Comment:
+    now = datetime.now(timezone.utc)
     comment = Comment(
         post_id=post_id,
         author_id=author.id,
         parent_id=parent.id if parent else None,
         content=content,
+        created_at=now,
+        updated_at=now,
     )
     post = db.get(Post, post_id)
     post.comments_count += 1

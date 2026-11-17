@@ -107,3 +107,26 @@ def patch_post(db: Session, post: Post, data: PostPatch) -> Post:
 def delete_post(db: Session, post: Post) -> None:
     db.delete(post)
     db.commit()
+
+
+def increment_post_reaction(
+    db: Session,
+    *,
+    post_id: int,
+    counter: str,
+) -> Post | None:
+    if counter not in {"likes", "dislikes"}:
+        raise ValueError("Unsupported post reaction counter")
+
+    post = db.scalar(
+        select(Post)
+        .where(Post.id == post_id, Post.status == "published")
+        .with_for_update()
+    )
+    if post is None:
+        return None
+
+    setattr(post, counter, (getattr(post, counter) or 0) + 1)
+    db.commit()
+    db.refresh(post)
+    return post

@@ -88,6 +88,8 @@ To upload an avatar, send `multipart/form-data` with a `file` field. JPEG, PNG, 
 | PUT | `/api/posts/{id}` | Replace your own post (authentication required) |
 | PATCH | `/api/posts/{id}` | Partially update your own post (authentication required) |
 | DELETE | `/api/posts/{id}` | Delete your own post (authentication required) |
+| POST | `/api/posts/{id}/like` | Like a post (authentication required) |
+| POST | `/api/posts/{id}/dislike` | Dislike a post (authentication required) |
 
 Example create-post body. The `slug`, `excerpt`, `image`, `status`, `categoryId`, `tags`, and `isFeatured` fields are optional:
 
@@ -108,6 +110,8 @@ Example create-post body. The `slug`, `excerpt`, `image`, `status`, `categoryId`
 Allowed `status` values are `draft`, `published`, and `archived`. If `slug` is omitted, it is generated from the title. New posts default to `draft`; public GET routes return only published posts.
 
 The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`.
+
+Each request increments the selected counter in the `posts` table and returns `postId`, `likes`, and `dislikes`. Repeated requests increment the counter again.
 
 ### Comments
 
@@ -130,4 +134,4 @@ The backend allows requests from `http://localhost:5173`. If the frontend runs o
 
 - Create tables and grant database privileges in the same PostgreSQL database configured in `DATABASE_URL`.
 - The `posts` table references `users.id`. The authenticated user is recorded as the author when a post is created.
-- View, like, dislike, and comment counters are included in the post model, but routes for changing them are not implemented yet.
+- View and comment counters are included in the post model; a route for changing the view counter is not implemented yet.

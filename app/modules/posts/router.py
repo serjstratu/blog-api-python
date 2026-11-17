@@ -11,6 +11,7 @@ from app.modules.posts.schema import (
     PaginationMetadata,
     PostCreate,
     PostPatch,
+    PostReactionResponse,
     PostReplace,
     PostResponse,
 )
@@ -98,3 +99,35 @@ def delete_post(
     post = _owned_post(db, post_id, current_user)
     service.delete_post(db, post)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _reaction_response(post: Post) -> PostReactionResponse:
+    return PostReactionResponse(
+        post_id=post.id,
+        likes=post.likes or 0,
+        dislikes=post.dislikes or 0,
+    )
+
+
+@router.post("/{post_id}/like", response_model=PostReactionResponse)
+def like_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    post = service.increment_post_reaction(db, post_id=post_id, counter="likes")
+    if post is None:
+        raise HTTPException(status_code=404, detail="Published post not found")
+    return _reaction_response(post)
+
+
+@router.post("/{post_id}/dislike", response_model=PostReactionResponse)
+def dislike_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    post = service.increment_post_reaction(db, post_id=post_id, counter="dislikes")
+    if post is None:
+        raise HTTPException(status_code=404, detail="Published post not found")
+    return _reaction_response(post)
