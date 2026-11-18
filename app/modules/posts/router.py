@@ -101,11 +101,12 @@ def delete_post(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _reaction_response(post: Post) -> PostReactionResponse:
+def _reaction_response(post: Post, my_reaction: str | None) -> PostReactionResponse:
     return PostReactionResponse(
         post_id=post.id,
         likes=post.likes or 0,
         dislikes=post.dislikes or 0,
+        my_reaction=my_reaction,
     )
 
 
@@ -115,10 +116,13 @@ def like_post(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    post = service.increment_post_reaction(db, post_id=post_id, counter="likes")
-    if post is None:
+    result = service.increment_post_reaction(
+        db, post_id=post_id, user=current_user, reaction_value="like"
+    )
+    if result is None:
         raise HTTPException(status_code=404, detail="Published post not found")
-    return _reaction_response(post)
+    post, my_reaction = result
+    return _reaction_response(post, my_reaction)
 
 
 @router.post("/{post_id}/dislike", response_model=PostReactionResponse)
@@ -127,7 +131,22 @@ def dislike_post(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    post = service.increment_post_reaction(db, post_id=post_id, counter="dislikes")
+    result = service.increment_post_reaction(
+        db, post_id=post_id, user=current_user, reaction_value="dislike"
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Published post not found")
+    post, my_reaction = result
+    return _reaction_response(post, my_reaction)
+
+
+@router.delete("/{post_id}/reaction", response_model=PostReactionResponse)
+def remove_reaction(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    post = service.remove_post_reaction(db, post_id=post_id, user=current_user)
     if post is None:
         raise HTTPException(status_code=404, detail="Published post not found")
-    return _reaction_response(post)
+    return _reaction_response(post, None)

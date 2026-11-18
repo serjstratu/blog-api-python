@@ -94,6 +94,7 @@ class PostReactionResponse(BaseModel):
     post_id: int
     likes: int
     dislikes: int
+    my_reaction: str | None
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 

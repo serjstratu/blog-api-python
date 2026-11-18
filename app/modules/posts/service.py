@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.posts.model import Post
+from app.modules.posts.reaction_model import PostReaction
 from app.modules.posts.schema import PostCreate, PostPatch, PostReplace, make_slug
 from app.modules.users.model import User
 
@@ -113,10 +114,11 @@ def increment_post_reaction(
     db: Session,
     *,
     post_id: int,
-    counter: str,
-) -> Post | None:
-    if counter not in {"likes", "dislikes"}:
-        raise ValueError("Unsupported post reaction counter")
+    user: User,
+    reaction_value: str,
+) -> tuple[Post, str] | None:
+    if reaction_value not in {"like", "dislike"}:
+        raise ValueError("Unsupported post reaction")
 
     post = db.scalar(
         select(Post)
@@ -126,7 +128,43 @@ def increment_post_reaction(
     if post is None:
         return None
 
-    setattr(post, counter, (getattr(post, counter) or 0) + 1)
+    reaction = db.get(PostReaction, (user.id, post_id))
+    if reaction is None:
+        reaction = PostReaction(
+            user_id=user.id,
+            post_id=post_id,
+            reaction=reaction_value,
+        )
+        db.add(reaction)
+        counter = "likes" if reaction_value == "like" else "dislikes"
+        setattr(post, counter, (getattr(post, counter) or 0) + 1)
+    elif reaction.reaction != reaction_value:
+        old_counter = "likes" if reaction.reaction == "like" else "dislikes"
+        new_counter = "likes" if reaction_value == "like" else "dislikes"
+        setattr(post, old_counter, max(0, (getattr(post, old_counter) or 0) - 1))
+        setattr(post, new_counter, (getattr(post, new_counter) or 0) + 1)
+        reaction.reaction = reaction_value
+
+    db.commit()
+    db.refresh(post)
+    return post, reaction_value
+
+
+def remove_post_reaction(db: Session, *, post_id: int, user: User) -> Post | None:
+    post = db.scalar(
+        select(Post)
+        .where(Post.id == post_id, Post.status == "published")
+        .with_for_update()
+    )
+    if post is None:
+        return None
+
+    reaction = db.get(PostReaction, (user.id, post_id))
+    if reaction is not None:
+        counter = "likes" if reaction.reaction == "like" else "dislikes"
+        setattr(post, counter, max(0, (getattr(post, counter) or 0) - 1))
+        db.delete(reaction)
+
     db.commit()
     db.refresh(post)
     return post

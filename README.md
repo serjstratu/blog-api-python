@@ -32,9 +32,9 @@ REST API backend for a blog application, built with FastAPI, SQLAlchemy, and Pos
    REFRESH_COOKIE_SAMESITE=lax
    ```
 
-3. Make sure the database has a `users` table with `avatar` and `bio` columns. Run the SQL in `app/scripts/create_posts_table.sql`, `app/scripts/create_comments_table.sql`, and `app/scripts/create_refresh_tokens_table.sql` against the same PostgreSQL database, using a client such as pgAdmin or `psql`.
+3. Make sure the database has a `users` table with `avatar` and `bio` columns. Run the SQL in `app/scripts/create_posts_table.sql`, `app/scripts/create_comments_table.sql`, `app/scripts/create_refresh_tokens_table.sql`, and `app/scripts/create_post_reactions_table.sql` against the same PostgreSQL database, using a client such as pgAdmin or `psql`.
 
-   The PostgreSQL role specified in `DATABASE_URL` needs read/write privileges on `posts`, `comments`, and `refresh_tokens`, plus `USAGE` and `SELECT` privileges on the `posts` and `comments` ID sequences. These tables reference the existing `users` table.
+   The PostgreSQL role specified in `DATABASE_URL` needs read/write privileges on `posts`, `comments`, `refresh_tokens`, and `post_reactions`, plus `USAGE` and `SELECT` privileges on the `posts` and `comments` ID sequences. These tables reference the existing `users` table.
 
 4. Start the API:
 
@@ -99,6 +99,7 @@ To upload an avatar, send `multipart/form-data` with a `file` field. JPEG, PNG, 
 | DELETE | `/api/posts/{id}` | Delete your own post (authentication required) |
 | POST | `/api/posts/{id}/like` | Like a post (authentication required) |
 | POST | `/api/posts/{id}/dislike` | Dislike a post (authentication required) |
+| DELETE | `/api/posts/{id}/reaction` | Remove your reaction (authentication required) |
 
 Example create-post body. The `slug`, `excerpt`, `image`, `status`, `categoryId`, `tags`, and `isFeatured` fields are optional:
 
@@ -120,7 +121,7 @@ Allowed `status` values are `draft`, `published`, and `archived`. If `slug` is o
 
 The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`.
 
-Each request increments the selected counter in the `posts` table and returns `postId`, `likes`, and `dislikes`. Repeated requests increment the counter again.
+Each user has one reaction per post, stored in `post_reactions`. Repeating the same request does not change the counters; switching from like to dislike (or vice versa) moves the user's reaction and updates both counters. Use `DELETE /api/posts/{id}/reaction` to remove your reaction. Reaction endpoints return `postId`, `likes`, `dislikes`, and `myReaction`.
 
 ### Comments
 
