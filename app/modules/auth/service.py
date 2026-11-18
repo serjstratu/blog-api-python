@@ -86,3 +86,14 @@ def rotate_refresh_token(
     )
     db.commit()
     return user
+
+
+def revoke_refresh_token(db: Session, *, token_id: str, user_id: int) -> None:
+    token = db.scalar(
+        select(RefreshToken)
+        .where(RefreshToken.jti == token_id, RefreshToken.user_id == user_id)
+        .with_for_update()
+    )
+    if token is not None and token.revoked_at is None:
+        token.revoked_at = datetime.now(timezone.utc)
+        db.commit()

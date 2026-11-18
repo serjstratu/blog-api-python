@@ -114,3 +114,31 @@ def refresh_access_token(
         access_token=create_access_token(str(user.id)),
         expires_in=settings.access_token_expire_minutes * 60,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if refresh_token:
+        try:
+            payload = decode_refresh_token(refresh_token)
+            user_id = int(payload["sub"])
+            token_id = str(payload["jti"])
+        except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+            pass
+        else:
+            service.revoke_refresh_token(db, token_id=token_id, user_id=user_id)
+
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        path=REFRESH_COOKIE_PATH,
+        secure=settings.refresh_cookie_secure,
+        httponly=True,
+        samesite=settings.refresh_cookie_samesite,
+    )
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response

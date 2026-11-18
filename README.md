@@ -54,6 +54,7 @@ API routes use the `/api` prefix.
 |---|---|---|
 | POST | `/api/auth/login` | Log in with a username or email and receive a JWT access token |
 | POST | `/api/auth/refresh` | Exchange the HttpOnly refresh-token cookie for a new access token and rotated refresh-token cookie |
+| POST | `/api/auth/logout` | Revoke the refresh token and clear its cookie |
 
 Example request body:
 
@@ -71,6 +72,8 @@ Authorization: Bearer <access_token>
 ```
 
 The login endpoint sets the refresh token as an HttpOnly cookie; it is not included in the JSON response. Call `/api/auth/refresh` with browser credentials enabled (`credentials: "include"`) to rotate the cookie and receive a new access token. For local development with the default `SameSite=Lax` cookie, use the same hostname for frontend and API URLs (for example, `localhost` for both rather than mixing `localhost` and `127.0.0.1`). In production, use HTTPS and set `REFRESH_COOKIE_SECURE=true`.
+
+Logout revokes the refresh token and clears the cookie. An access token already issued remains usable until it expires; immediate access-token revocation would require server-side access-token tracking.
 
 ### Users
 
