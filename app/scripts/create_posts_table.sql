@@ -25,3 +25,5 @@ CREATE INDEX IF NOT EXISTS ix_posts_published_at
     WHERE status = 'published';
 
 CREATE INDEX IF NOT EXISTS ix_posts_user_id ON posts (user_id);
+
+CREATE INDEX IF NOT EXISTS ix_posts_tags ON posts USING GIN (tags);

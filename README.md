@@ -91,7 +91,7 @@ To upload an avatar, send `multipart/form-data` with a `file` field. JPEG, PNG, 
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/posts?limit=20&offset=0` | List published posts with pagination metadata |
+| GET | `/api/posts?limit=20&offset=0&tags=react&tags=javascript` | List published posts with pagination metadata and optional tag filter |
 | GET | `/api/posts/{id}` | Get a published post |
 | POST | `/api/posts` | Create a post (authentication required) |
 | PUT | `/api/posts/{id}` | Replace your own post (authentication required) |
@@ -119,7 +119,7 @@ Example create-post body. The `slug`, `excerpt`, `image`, `status`, `categoryId`
 
 Allowed `status` values are `draft`, `published`, and `archived`. If `slug` is omitted, it is generated from the title. New posts default to `draft`; public GET routes return only published posts.
 
-The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`.
+The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`. The optional `tags` filter accepts repeated query parameters or a comma-separated list and returns posts matching **any** requested tag. For example: `/api/posts?tags=react&tags=javascript&tags=frontend`.
 
 Each user has one reaction per post, stored in `post_reactions`. Repeating the same request does not change the counters; switching from like to dislike (or vice versa) moves the user's reaction and updates both counters. Use `DELETE /api/posts/{id}/reaction` to remove your reaction. Reaction endpoints return `postId`, `likes`, `dislikes`, and `myReaction`.
 

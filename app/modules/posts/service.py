@@ -9,15 +9,26 @@ from app.modules.posts.schema import PostCreate, PostPatch, PostReplace, make_sl
 from app.modules.users.model import User
 
 
-def list_posts(db: Session, *, limit: int, offset: int) -> tuple[list[Post], int]:
+def list_posts(
+    db: Session,
+    *,
+    limit: int,
+    offset: int,
+    tags: list[str] | None = None,
+) -> tuple[list[Post], int]:
+    filters = [Post.status == "published"]
+    if tags:
+        # PostgreSQL ARRAY overlap means a post matches at least one requested tag.
+        filters.append(Post.tags.overlap(tags))
+
     query = (
         select(Post)
-        .where(Post.status == "published")
+        .where(*filters)
         .order_by(Post.published_at.desc(), Post.id.desc())
         .limit(limit)
         .offset(offset)
     )
-    count_query = select(func.count()).select_from(Post).where(Post.status == "published")
+    count_query = select(func.count()).select_from(Post).where(*filters)
     posts = list(db.scalars(query).all())
     total_items = db.scalar(count_query) or 0
     return posts, total_items
