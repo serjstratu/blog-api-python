@@ -57,3 +57,31 @@ def get_current_user_from_access_cookie(
     if user is None:
         raise unauthorized
     return user
+
+
+def get_current_user_from_header_or_access_cookie(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    token = (
+        credentials.credentials
+        if credentials is not None
+        else request.cookies.get(ACCESS_COOKIE_NAME)
+    )
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Valid access token or access-token cookie required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not token:
+        raise unauthorized
+    try:
+        payload = decode_access_token(token)
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+        raise unauthorized from None
+    user = db.get(User, user_id)
+    if user is None:
+        raise unauthorized
+    return user

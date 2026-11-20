@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.modules.auth.dependencies import get_current_user, get_current_user_from_access_cookie
+from app.modules.auth.dependencies import get_current_user_from_header_or_access_cookie
 from app.modules.notifications import service
 from app.modules.notifications.schema import (
     NotificationResponse,
@@ -25,7 +25,7 @@ def list_notifications(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_header_or_access_cookie),
 ):
     notifications, total_items = service.list_notifications(
         db,
@@ -50,7 +50,7 @@ def list_notifications(
 @router.get("/unread-count", response_model=UnreadCountResponse)
 def unread_count(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_header_or_access_cookie),
 ):
     return UnreadCountResponse(
         unread_count=service.get_unread_count(db, recipient_id=current_user.id)
@@ -60,7 +60,7 @@ def unread_count(
 @router.patch("/read-all", response_model=ReadAllResponse)
 def read_all(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_header_or_access_cookie),
 ):
     count = service.mark_all_read(db, recipient_id=current_user.id)
     return ReadAllResponse(updated_count=count)
@@ -70,7 +70,7 @@ def read_all(
 def mark_notification_read(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_header_or_access_cookie),
 ):
     notification = service.mark_read(
         db,
@@ -86,7 +86,7 @@ def mark_notification_read(
 async def notification_stream(
     request: Request,
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
-    current_user: User = Depends(get_current_user_from_access_cookie),
+    current_user: User = Depends(get_current_user_from_header_or_access_cookie),
 ):
     try:
         last_id = max(0, int(last_event_id)) if last_event_id is not None else 0
