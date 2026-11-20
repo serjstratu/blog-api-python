@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload, with_loader_criteria
 
 from app.modules.comments.model import Comment
+from app.modules.notifications.service import create_notification
 from app.modules.posts.model import Post
 from app.modules.users.model import User
 
@@ -66,6 +67,17 @@ def create_comment(
     post = db.get(Post, post_id)
     post.comments_count += 1
     db.add(comment)
+    db.flush()
+    recipient_id = parent.author_id if parent is not None else post.user_id
+    create_notification(
+        db,
+        recipient_id=recipient_id,
+        actor_id=author.id,
+        notification_type="reply" if parent is not None else "comment",
+        entity_type="comment",
+        entity_id=comment.id,
+        message="Someone replied to your comment." if parent is not None else "Someone commented on your post.",
+    )
     db.commit()
     db.refresh(comment)
     return comment

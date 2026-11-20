@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.modules.posts.model import Post
 from app.modules.posts.reaction_model import PostReaction
 from app.modules.posts.schema import PostCreate, PostPatch, PostReplace, make_slug
+from app.modules.notifications.service import create_notification
 from app.modules.users.model import User
 
 
@@ -14,12 +15,11 @@ def list_posts(
     *,
     limit: int,
     offset: int,
-    tags: list[str] | None = None,
+    tag: str | None = None,
 ) -> tuple[list[Post], int]:
     filters = [Post.status == "published"]
-    if tags:
-        # PostgreSQL ARRAY overlap means a post matches at least one requested tag.
-        filters.append(Post.tags.overlap(tags))
+    if tag:
+        filters.append(Post.tags.overlap([tag]))
 
     query = (
         select(Post)
@@ -149,12 +149,27 @@ def increment_post_reaction(
         db.add(reaction)
         counter = "likes" if reaction_value == "like" else "dislikes"
         setattr(post, counter, (getattr(post, counter) or 0) + 1)
+        reaction_changed = True
     elif reaction.reaction != reaction_value:
         old_counter = "likes" if reaction.reaction == "like" else "dislikes"
         new_counter = "likes" if reaction_value == "like" else "dislikes"
         setattr(post, old_counter, max(0, (getattr(post, old_counter) or 0) - 1))
         setattr(post, new_counter, (getattr(post, new_counter) or 0) + 1)
         reaction.reaction = reaction_value
+        reaction_changed = True
+    else:
+        reaction_changed = False
+
+    if reaction_changed:
+        create_notification(
+            db,
+            recipient_id=post.user_id,
+            actor_id=user.id,
+            notification_type="reaction",
+            entity_type="post",
+            entity_id=post.id,
+            message="Someone reacted to your post.",
+        )
 
     db.commit()
     db.refresh(post)

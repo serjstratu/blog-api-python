@@ -9,6 +9,7 @@ from app.core.security import (
 )
 from app.core.config import settings
 from app.db.database import get_db
+from app.modules.auth.dependencies import ACCESS_COOKIE_NAME
 
 from app.modules.auth import service
 from app.modules.auth.schema import AccessTokenResponse, LoginRequest, TokenResponse
@@ -22,6 +23,7 @@ router = APIRouter(
 
 REFRESH_COOKIE_NAME = "refresh_token"
 REFRESH_COOKIE_PATH = "/api/auth"
+ACCESS_COOKIE_PATH = "/api/notifications"
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
@@ -33,6 +35,18 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         secure=settings.refresh_cookie_secure,
         samesite=settings.refresh_cookie_samesite,
         path=REFRESH_COOKIE_PATH,
+    )
+
+
+def _set_access_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_COOKIE_NAME,
+        value=token,
+        max_age=settings.access_token_expire_minutes * 60,
+        httponly=True,
+        secure=settings.refresh_cookie_secure,
+        samesite=settings.refresh_cookie_samesite,
+        path=ACCESS_COOKIE_PATH,
     )
 
 
@@ -64,6 +78,7 @@ def login(
         expires_at=refresh_expires_at,
     )
     _set_refresh_cookie(response, refresh_token)
+    _set_access_cookie(response, access_token)
 
     return TokenResponse(
         access_token=access_token,
@@ -109,9 +124,11 @@ def refresh_access_token(
             detail="Refresh token has already been used or is no longer valid",
         )
 
+    access_token = create_access_token(str(user.id))
     _set_refresh_cookie(response, new_refresh_token)
+    _set_access_cookie(response, access_token)
     return AccessTokenResponse(
-        access_token=create_access_token(str(user.id)),
+        access_token=access_token,
         expires_in=settings.access_token_expire_minutes * 60,
     )
 
@@ -136,6 +153,13 @@ def logout(
     response.delete_cookie(
         key=REFRESH_COOKIE_NAME,
         path=REFRESH_COOKIE_PATH,
+        secure=settings.refresh_cookie_secure,
+        httponly=True,
+        samesite=settings.refresh_cookie_samesite,
+    )
+    response.delete_cookie(
+        key=ACCESS_COOKIE_NAME,
+        path=ACCESS_COOKIE_PATH,
         secure=settings.refresh_cookie_secure,
         httponly=True,
         samesite=settings.refresh_cookie_samesite,

@@ -32,9 +32,9 @@ REST API backend for a blog application, built with FastAPI, SQLAlchemy, and Pos
    REFRESH_COOKIE_SAMESITE=lax
    ```
 
-3. Make sure the database has a `users` table with `avatar` and `bio` columns. Run the SQL in `app/scripts/create_posts_table.sql`, `app/scripts/create_comments_table.sql`, `app/scripts/create_refresh_tokens_table.sql`, and `app/scripts/create_post_reactions_table.sql` against the same PostgreSQL database, using a client such as pgAdmin or `psql`.
+3. Make sure the database has a `users` table with `avatar` and `bio` columns. Run the SQL in `app/scripts/create_posts_table.sql`, `app/scripts/create_comments_table.sql`, `app/scripts/create_refresh_tokens_table.sql`, `app/scripts/create_post_reactions_table.sql`, and `app/scripts/create_notifications_table.sql` against the same PostgreSQL database, using a client such as pgAdmin or `psql`.
 
-   The PostgreSQL role specified in `DATABASE_URL` needs read/write privileges on `posts`, `comments`, `refresh_tokens`, and `post_reactions`, plus `USAGE` and `SELECT` privileges on the `posts` and `comments` ID sequences. These tables reference the existing `users` table.
+   The PostgreSQL role specified in `DATABASE_URL` needs read/write privileges on `posts`, `comments`, `refresh_tokens`, `post_reactions`, and `notifications`, plus `USAGE` and `SELECT` privileges on the `posts`, `comments`, and `notifications` ID sequences. These tables reference the existing `users` table.
 
 4. Start the API:
 
@@ -75,6 +75,18 @@ The login endpoint sets the refresh token as an HttpOnly cookie; it is not inclu
 
 Logout revokes the refresh token and clears the cookie. An access token already issued remains usable until it expires; immediate access-token revocation would require server-side access-token tracking.
 
+### Notifications
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/notifications?limit=20&offset=0` | Authenticated | List the current user's notifications |
+| GET | `/api/notifications/unread-count` | Authenticated | Get the unread count |
+| PATCH | `/api/notifications/{id}/read` | Authenticated | Mark one of the current user's notifications as read |
+| PATCH | `/api/notifications/read-all` | Authenticated | Mark all of the current user's notifications as read |
+| GET | `/api/notifications/stream` | Access-token cookie | Receive new notifications through SSE |
+
+The list endpoint is paginated and each user's notifications are private. The SSE stream emits `notification` events containing the notification JSON. Use browser `EventSource` with `withCredentials: true`; login and refresh set a short-lived HttpOnly access-token cookie scoped to the stream path. The current event source polls PostgreSQL once per second, so it works across API workers without an in-memory-only event bus. Comments, replies, and post reactions create notifications for the affected post/comment owner.
+
 ### Users
 
 | Method | Endpoint | Description |
@@ -91,7 +103,7 @@ To upload an avatar, send `multipart/form-data` with a `file` field. JPEG, PNG, 
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/posts?limit=20&offset=0&tags=react&tags=javascript` | List published posts with pagination metadata and optional tag filter |
+| GET | `/api/posts?limit=20&offset=0&tag=react` | List published posts with pagination metadata and optional tag filter |
 | GET | `/api/posts/{id}` | Get a published post |
 | POST | `/api/posts` | Create a post (authentication required) |
 | PUT | `/api/posts/{id}` | Replace your own post (authentication required) |
@@ -119,7 +131,7 @@ Example create-post body. The `slug`, `excerpt`, `image`, `status`, `categoryId`
 
 Allowed `status` values are `draft`, `published`, and `archived`. If `slug` is omitted, it is generated from the title. New posts default to `draft`; public GET routes return only published posts.
 
-The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`. The optional `tags` filter accepts repeated query parameters or a comma-separated list and returns posts matching **any** requested tag. For example: `/api/posts?tags=react&tags=javascript&tags=frontend`.
+The posts listing returns a `data` array and a `pagination` object with `currentPage`, `perPage`, `totalItems`, `totalPages`, `hasNextPage`, and `hasPreviousPage`. `limit` defaults to `20` (maximum `100`), and `offset` defaults to `0`. The optional `tag` filter returns published posts tagged with the requested value, for example `/api/posts?tag=react`.
 
 Each user has one reaction per post, stored in `post_reactions`. Repeating the same request does not change the counters; switching from like to dislike (or vice versa) moves the user's reaction and updates both counters. Use `DELETE /api/posts/{id}/reaction` to remove your reaction. Reaction endpoints return `postId`, `likes`, `dislikes`, and `myReaction`.
 
