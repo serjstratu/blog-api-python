@@ -1,5 +1,6 @@
 import jwt
 from fastapi import Depends, HTTPException, status
+from fastapi import Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ from app.modules.users.model import User
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
+ACCESS_COOKIE_NAME = "access_token"
 
 
 def get_current_user(
@@ -29,6 +31,28 @@ def get_current_user(
     except (jwt.PyJWTError, KeyError, TypeError, ValueError):
         raise unauthorized from None
 
+    user = db.get(User, user_id)
+    if user is None:
+        raise unauthorized
+    return user
+
+
+def get_current_user_from_access_cookie(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> User:
+    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Valid access-token cookie required",
+    )
+    if not token:
+        raise unauthorized
+    try:
+        payload = decode_access_token(token)
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+        raise unauthorized from None
     user = db.get(User, user_id)
     if user is None:
         raise unauthorized

@@ -32,22 +32,15 @@ def _owned_post(db: Session, post_id: int, user: User) -> Post:
 def list_posts(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    tags: list[str] | None = Query(default=None),
+    tag: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    normalized_tags = list(
-        dict.fromkeys(
-            tag.strip().lower()
-            for value in (tags or [])
-            for tag in value.split(",")
-            if tag.strip()
-        )
-    )
+    normalized_tag = tag.strip().lower() if tag and tag.strip() else None
     posts, total_items = service.list_posts(
         db,
         limit=limit,
         offset=offset,
-        tags=normalized_tags or None,
+        tag=normalized_tag,
     )
     current_page = offset // limit + 1
     total_pages = (total_items + limit - 1) // limit
